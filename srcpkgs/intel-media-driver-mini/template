@@ -1,0 +1,22 @@
+# Template file for 'intel-media-driver-mini'
+# Debloated variant of intel-media-driver, removing non-free kernels support
+# and building with MinSizeRel for smaller binaries.
+pkgname=intel-media-driver-mini
+version=26.3.3
+revision=1
+archs="x86_64*"
+build_style=cmake
+configure_args="-DBUILD_TYPE=MinSizeRel -DENABLE_NONFREE_KERNELS=OFF"
+hostmakedepends="cmake-bootstrap pkg-config gcc"
+makedepends="libva-devel libX11-devel intel-gmmlib-devel libpciaccess-devel"
+short_desc="Intel Media Driver for VAAPI (debloated, no non-free kernels)"
+maintainer="Orphaned <orphan@voidlinux.org>"
+license="MIT"
+homepage="https://github.com/intel/media-driver"
+changelog="https://raw.githubusercontent.com/intel/media-driver/master/README.md"
+distfiles="https://github.com/intel/media-driver/archive/refs/tags/intel-media-${version}.tar.gz"
+checksum=bbe4deb0d2f72e5c58adaf17f87b7a11bf639446d99bf4193a116d0588647a97
+
+post_install() {
+	vlicense LICENSE
+}

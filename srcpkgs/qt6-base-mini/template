@@ -1,0 +1,29 @@
+# Template file for 'qt6-base-mini'
+# Debloated variant of qt6-base, removing ICU, journald and VNC support.
+# ICU is a large Unicode library; journald is systemd-specific; VNC is rarely used.
+# Also builds with MinSizeRel for smaller binaries.
+pkgname=qt6-base-mini
+version=6.11.1
+revision=1
+build_style=cmake
+configure_args="-DINSTALL_DATADIR=share/qt6
+ -DQT_FEATURE_openssl_linked=ON -DQT_FEATURE_system_sqlite=ON
+ -DQT_FEATURE_system_xcb_xinput=ON -DQT_FEATURE_libproxy=ON
+ -DQT_FEATURE_qmake=ON -DQT_FEATURE_wayland=ON -DBUILD_WITH_PCH=OFF
+ -DFEATURE_icu=OFF -DFEATURE_journald=OFF -DFEATURE_vnc=OFF
+ -DCMAKE_BUILD_TYPE=MinSizeRel"
+hostmakedepends="pkg-config python3 xz"
+makedepends="zlib-devel libzstd-devel dbus-devel libmd4c-devel double-conversion-devel
+ glib-devel libxcb-devel libSM-devel xcb-util-image-devel xcb-util-keysyms-devel
+ xcb-util-renderutil-devel xcb-util-wm-devel MesaLib-devel pcre2-devel
+ mtdev-devel harfbuzz-devel libpng-devel tslib-devel libinput-devel
+ gtk+3-devel libmariadbclient-devel postgresql-libs-devel unixodbc-devel
+ cups-devel libproxy-devel brotli-devel sqlite-devel mit-krb5-devel
+ vulkan-loader-devel libb2-devel xcb-util-cursor-devel wayland-devel"
+short_desc="Qt6 base libraries (debloated, no ICU/journald/VNC)"
+maintainer="Orphaned <orphan@voidlinux.org>"
+license="LGPL-3.0-only, GPL-2.0-only, BSD-3-Clause, MIT"
+homepage="https://www.qt.io"
+changelog="https://doc.qt.io/qt-6/whatsnew67.html"
+distfiles="https://download.qt.io/official_releases/qt/${version%.*}/${version}/submodules/qtbase-everywhere-src-${version}.tar.xz"
+checksum=d9594a31228aa23ad6b531719a29b45f0f3989fe6c136d45767ea179f233c1ac

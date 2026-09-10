@@ -1,0 +1,23 @@
+# Template file for 'kiconthemes-mini'
+# Debloated variant of kf6-kiconthemes, removing BreezeIcons library linkage.
+# The libKF6BreezeIcons.so is very large. Removing it saves significant disk space
+# for apps that use KIconThemes but don't need the Breeze icon set bundled.
+pkgname=kiconthemes-mini
+version=6.15.0
+revision=1
+build_style=cmake
+configure_args="-DKDE_INSTALL_QMLDIR=lib/qt6/qml
+ -DKDE_INSTALL_QTPLUGINDIR=lib/qt6/plugins -DUSE_BreezeIcons=OFF"
+hostmakedepends="extra-cmake-modules qt6-tools qt6-base
+ qt6-declarative-host-tools gettext kf6-kconfig"
+makedepends="kf6-karchive-devel kf6-kcolorscheme-devel
+ kf6-kwidgetsaddons-devel kf6-ki18n-devel
+ qt6-svg-devel kf6-kconfigwidgets-devel qt6-base-private-devel"
+short_desc="KDE Icon GUI utilities (debloated, no BreezeIcons)"
+maintainer="Orphaned <orphan@voidlinux.org>"
+license="LGPL-2.1-or-later"
+homepage="https://invent.kde.org/frameworks/kiconthemes"
+distfiles="${KDE_SITE}/frameworks/${version%.*}/kiconthemes-${version}.tar.xz"
+checksum=8842703899722f9ab6b4aec0b45c38bee9896e32daccb3eb17ef014404c9606b
+
+

@@ -1,0 +1,30 @@
+# Template file for 'libxml2-mini'
+# Debloated variant of libxml2, removing ICU support.
+pkgname=libxml2-mini
+version=2.13.8
+revision=1
+build_style=gnu-configure
+configure_args="--with-threads --with-history --without-icu
+ --with-legacy --with-ftp --with-xptr-locs --enable-static"
+hostmakedepends="gettext pkg-config python3 python3-packaging-bootstrap"
+makedepends="zlib-devel ncurses-devel readline-devel liblzma-devel python3-devel"
+short_desc="Library providing XML and HTML support (debloated, no ICU)"
+maintainer="Orphaned <orphan@voidlinux.org>"
+license="MIT"
+homepage="https://gitlab.gnome.org/GNOME/libxml2"
+changelog="https://gitlab.gnome.org/GNOME/libxml2/-/raw/master/NEWS"
+distfiles="${GNOME_SITE}/libxml2/${version%.*}/libxml2-${version}.tar.xz"
+checksum=277294cb33119ab71b2bc81f2f445e9bc9435b893ad15bb2cd2b0e859a0ee84a
+python_version=3
+CFLAGS="-I$XBPS_CROSS_BASE/usr/include/python$py3_ver"
+
+post_extract() {
+	if [ "$XBPS_TARGET_LIBC" = "musl" ]; then
+		rm -f test/ebcdic_566012.xml
+		rm -f test/icu_parse_test.xml
+	fi
+}
+
+post_install() {
+	vlicense Copyright
+}

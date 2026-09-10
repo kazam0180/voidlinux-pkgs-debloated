@@ -1,0 +1,200 @@
+# Template file for 'ffmpeg'
+# Debloated variant (aka ffmpeg-mini), converted from the Arch Linux
+# pkgforge-dev/archlinux-pkgs-debloated PKGBUILD for xbps-src.
+# Removed features (vs upstream void-packages ffmpeg6):
+#   - x265 (libx265) encoding, AV1 encoding via libaom / SVT-AV1 / rav1e
+#   - OpenCL (ocl-icd), libplacebo, frei0r, libgsm, opencore-amr,
+#     libjxl (JPEG-XL), librsvg, libopenjpeg, vapoursynth
+#   - vdpau (replaced by --enable-small like the Arch mini variant)
+# audacity also needs to be bumped when a new ffmpeg version bumps libavformat's soname!
+pkgname=ffmpeg
+version=6.1.6
+revision=1
+hostmakedepends="pkg-config perl"
+makedepends="zlib-devel bzip2-devel freetype-devel alsa-lib-devel libXfixes-devel
+ libXext-devel libXvMC-devel libxcb-devel lame-devel libtheora-devel
+ libvorbis-devel x264-devel xvidcore-devel jack-devel SDL2-devel libsoxr-devel
+ libcdio-paranoia-devel librtmp-devel libopenmpt-devel gnutls-devel
+ speex-devel celt-devel harfbuzz-devel libass-devel opus-devel
+ libbs2b-devel libvidstab-devel vmaf-devel libbluray-devel pulseaudio-devel
+ v4l-utils-devel libvpx-devel libdav1d-devel
+ libwebp-devel libdrm-devel srt-devel librist-devel vulkan-loader-devel
+ zimg-devel libmysofa-devel
+ $(vopt_if fdk_aac fdk-aac-devel) $(vopt_if libvpl libvpl-devel)
+ $(vopt_if nvcodec nv-codec-headers) $(vopt_if vaapi libva-devel)"
+depends="ffplay6>=${version}_${revision}"
+short_desc="Decoding, encoding and streaming software (debloated)"
+conflicts="ffmpeg6"
+replaces="ffmpeg6>=0"
+maintainer="Orphaned <orphan@voidlinux.org>"
+license="GPL-3.0-or-later"
+homepage="https://www.ffmpeg.org"
+changelog="https://raw.githubusercontent.com/FFmpeg/FFmpeg/master/Changelog"
+distfiles="https://www.ffmpeg.org/releases/ffmpeg-${version}.tar.xz"
+checksum=d4fcb164028dd3beee5d92c0ac72e46aac6973c75ea12dc14de07bf8f407370a
+
+build_options="vaapi fdk_aac nvcodec libvpl"
+
+case "$XBPS_TARGET_MACHINE" in
+	i686*|x86_64*)
+		hostmakedepends+=" nasm"
+		build_options_default+=" vaapi nvcodec libvpl"
+		;;
+	mips*) CFLAGS="-mnan=legacy";;
+esac
+
+do_configure() {
+	# Fix gcc on x86_64-musl only
+	if [ "$XBPS_TARGET_MACHINE" = "x86_64-musl" ]; then
+		vsed -i configure -e "s;_cflags_speed='-O3';_cflags_speed='-O2';"
+	fi
+
+	if [ "$CROSS_BUILD" ]; then
+		case "$XBPS_TARGET_MACHINE" in
+			arm*) _arch="arm";;
+			aarch64*) _arch="aarch64";;
+			mips*) _arch="mips";;
+			ppc64*) _arch="ppc64";;
+			ppc*) _arch="ppc";;
+			*) _arch="${XBPS_TARGET_MACHINE%%-musl}";;
+		esac
+
+		_args+=" --enable-cross-compile
+			--sysroot=$XBPS_CROSS_BASE
+			--cross-prefix=${XBPS_CROSS_TRIPLET}-
+			--target-os=linux --arch=${_arch}"
+	fi
+
+	./configure --prefix=/usr --disable-debug --enable-gpl --enable-gnutls \
+		--disable-stripping --enable-small \
+		--enable-libcdio --enable-version3 --enable-runtime-cpudetect \
+		--enable-libmp3lame --enable-libvorbis --enable-libxvid \
+		--enable-libx264 --enable-libvpx --enable-libtheora \
+		--enable-shared --enable-static --enable-libxcb \
+		--enable-libpulse --enable-libfreetype --enable-libopenmpt \
+		--enable-libspeex --enable-libcelt --enable-libass \
+		--enable-libopus --enable-librtmp --enable-libjack \
+		--disable-libopencore_amrnb --disable-libopencore_amrwb \
+		--disable-libopenjpeg --enable-libbluray --enable-libsoxr \
+		--enable-postproc --enable-libvmaf ${_args} \
+		--enable-libv4l2 \
+		--enable-libbs2b --enable-libvidstab --enable-libdav1d \
+		--enable-libsrt --enable-librist --enable-libwebp \
+		--enable-vulkan --enable-libdrm \
+		--enable-libfreetype --enable-libharfbuzz --enable-libfontconfig \
+		$(vopt_if fdk_aac '--enable-nonfree --enable-libfdk-aac') \
+		$(vopt_enable vaapi) \
+		$(vopt_enable zimg libzimg) \
+		$(vopt_enable sofa libmysofa) \
+		$(vopt_enable libvpl libvpl) \
+		$(vopt_enable nvcodec nvenc) \
+		$(vopt_enable nvcodec nvdec)
+}
+
+do_build() {
+	make ${makejobs}
+	make doc/ff{mpeg,play}.1
+}
+
+do_install() {
+	make DESTDIR=${DESTDIR} install install-man
+}
+
+libavcodec6_package() {
+	short_desc="FFmpeg codec library"
+	pkg_install() {
+		vmove "usr/lib/libavcodec.so.*"
+	}
+}
+
+libavdevice6_package() {
+	short_desc="FFmpeg device handling library"
+	pkg_install() {
+		vmove "usr/lib/libavdevice.so.*"
+	}
+}
+
+libavresample6_package() {
+	short_desc="Package deprecated, removal needed"
+	metapackage=yes
+}
+
+libavformat6_package() {
+	short_desc="FFmpeg file format library"
+	pkg_install() {
+		vmove "usr/lib/libavformat.so.*"
+	}
+}
+
+libavutil6_package() {
+	short_desc="FFmpeg utility library"
+	pkg_install() {
+		vmove "usr/lib/libavutil.so.*"
+	}
+}
+
+libavfilter6_package() {
+	short_desc="FFmpeg audio/video filter library"
+	pkg_install() {
+		vmove "usr/lib/libavfilter.so.*"
+	}
+}
+
+libpostproc6_package() {
+	short_desc="FFmpeg video postprocessing library"
+	pkg_install() {
+		vmove "usr/lib/libpostproc.so.*"
+	}
+}
+
+libswscale6_package() {
+	short_desc="FFmpeg video scaling library"
+	pkg_install() {
+		vmove "usr/lib/libswscale.so.*"
+	}
+}
+
+libswresample6_package() {
+	short_desc="FFmpeg video resampling library"
+	pkg_install() {
+		vmove "usr/lib/libswresample.so.*"
+	}
+}
+
+ffmpeg6-devel_package() {
+	depends="
+		libavcodec6>=${version}_${revision}
+		libavdevice6>=${version}_${revision}
+		libavformat6>=${version}_${revision}
+		libavutil6>=${version}_${revision}
+		libavfilter6>=${version}_${revision}
+		libpostproc6>=${version}_${revision}
+		libswscale6>=${version}_${revision}
+		libswresample6>=${version}_${revision}
+		libavresample6>=${version}_${revision}"
+	short_desc="Decoding, encoding and streaming software - development files"
+	conflicts="ffmpeg-devel"
+	replaces="ffmpeg-devel>=0"
+	case "$XBPS_TARGET_MACHINE" in
+		i686*)
+		# /usr/bin/strip: error: the input file '/destdir//ffmpeg-devel-4.4.4/usr/lib/libavfilter.a(vf_atadenoise.o)' has no sections
+		nostrip_files="/usr/lib/libavfilter.a";;
+	esac
+
+	pkg_install() {
+		vmove usr/include
+		vmove usr/lib/pkgconfig
+		vmove "usr/lib/*.a"
+		vmove "usr/lib/*.so"
+		vmove usr/share/ffmpeg/examples
+		vmove usr/share/man/man3
+	}
+}
+
+ffplay6_package() {
+	short_desc="Simple video player using FFmpeg and SDL2"
+	pkg_install() {
+		vmove usr/bin/ffplay
+		vmove "usr/share/man/man1/ffplay*"
+	}
+}
