@@ -1,0 +1,42 @@
+# Template file for 'gtk2-mini'
+pkgname=gtk2-mini
+version=2.24.33
+revision=1
+build_style=gnu-configure
+configure_args="--enable-man --with-xinput"
+CFLAGS="${CFLAGS//-O2/-Os}"
+hostmakedepends="pkg-config perl xmlto glib-devel gtk-update-icon-cache"
+makedepends="libglib-devel libXcursor-devel
+ libXext-devel libXrender-devel libXinerama-devel libXi-devel libXrandr-devel
+ libXcomposite-devel libXdamage-devel fontconfig-devel gdk-pixbuf-devel
+ cairo-devel pango-devel atk-devel"
+depends="shared-mime-info dbus-x11 gtk-update-icon-cache"
+short_desc="GTK+ toolkit (v2) - debloated, no gir/cups"
+maintainer="Orphaned <orphan@voidlinux.org>"
+license="LGPL-2.1-or-later"
+homepage="https://gtk.org"
+distfiles="${GNOME_SITE}/gtk+/2.24/gtk+-${version}.tar.xz"
+checksum=ac2ac757f5942d318a311a54b0c80b5ef295f299c2a73c632f6bfb1ff49cc6da
+make_check=no
+python_version=3
+
+CFLAGS="-UGDK_PIXBUF_DISABLE_DEPRECATED -Wno-incompatible-pointer-types -Wno-implicit-int"
+
+if [ "$CROSS_BUILD" ]; then
+	hostmakedepends+=" automake libtool gtk-doc glib-devel gdk-pixbuf-devel"
+fi
+
+pre_configure() {
+	if [ "$CROSS_BUILD" ]; then
+		autoreconf -if
+	fi
+	vsed -i -e '/DATADIRNAME=/s/=.*/=share/' \
+		-e '/CATOBJEXT=/s/\.mo/.gmo/' \
+		configure
+}
+
+post_install() {
+	vinstall ${FILESDIR}/gtkrc 644 usr/share/gtk-2.0
+	rm ${DESTDIR}/usr/bin/gtk-update-icon-cache
+	rm ${DESTDIR}/usr/share/man/man1/gtk-update-icon-cache.1
+}

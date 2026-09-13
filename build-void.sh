@@ -10,11 +10,14 @@ set -e
 PKG="${1:?Usage: $0 <package-name>}"
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 IMAGE="ghcr.io/void-linux/void-glibc-full:20260901r1"
+OUT_DIR="$REPO_DIR/binpkgs"
+mkdir -p "$OUT_DIR"
 
 echo "=> Building $PKG with ethereal chroot mode..."
 
 podman run --rm \
     -v "$REPO_DIR":/io:Z \
+    -v "$OUT_DIR":/output:Z \
     "$IMAGE" \
     sh -c "
 set -ex
@@ -31,27 +34,26 @@ xbps-uhelper arch > masterdir/.xbps_chroot_init
 echo XBPS_CHROOT_CMD=ethereal > etc/conf
 echo XBPS_ALLOW_CHROOT_BREAKOUT=yes >> etc/conf
 
-# Copy the package template
+# Copy the package template (PKG expanded by outer shell)
 if [ -d /io/srcpkgs/$PKG ]; then
     cp -a /io/srcpkgs/$PKG srcpkgs/$PKG
 else
-    echo \"ERROR: srcpkgs/$PKG not found in /io\"
+    echo 'ERROR: srcpkgs/$PKG not found in /io'
     exit 1
 fi
 
-# Also copy any dependencies this package might need
+# Also copy any sibling templates that might be dependencies
 for dep in /io/srcpkgs/*/; do
     depname=\$(basename \"\$dep\")
-    # Skip if it's the same package or is the main ffmpeg packages
-    [ \"\$depname\" = \"$PKG\" ] && continue
-    # Copy dependency templates
+    [ \"\$depname\" = '$PKG' ] && continue
     [ -d \"srcpkgs/\$depname\" ] || cp -a \"\$dep\" srcpkgs/\$depname 2>/dev/null || true
 done
 
 # Build
 ./xbps-src pkg $PKG 2>&1
 
-# Show results
-echo '=> Build output:'
-ls -la /host/binpkgs/${PKG}*.xbps 2>/dev/null || echo 'No packages found in /host/binpkgs'
+# Copy output packages to mounted output dir
+find /tmp/void-packages/hostdir/binpkgs/ -name '*.xbps' -exec cp -v {} /output/ \; 2>/dev/null || echo 'No packages found'
+echo '=> Build complete.'
+ls -la /output/${PKG}*.xbps 2>/dev/null || echo 'No packages in /output'
 "
