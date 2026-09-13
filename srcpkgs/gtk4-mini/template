@@ -1,0 +1,34 @@
+# Template file for 'gtk4-mini'
+pkgname=gtk4-mini
+version=4.22.4
+revision=1
+build_style=meson
+configure_args="-Dman-pages=false -Ddocumentation=false -Dbuild-tests=false
+ -Dbuild-testsuite=false -Dbuild-examples=false
+ -Dbroadway-backend=false
+ -Dx11-backend=true
+ -Dwayland-backend=true
+ -Dintrospection=enabled
+ -Dcolord=disabled
+ -Dcloudproviders=disabled
+ -Dvulkan=disabled
+ -Dtracker=disabled
+ -Dprint-cups=disabled
+ -Dmedia-gstreamer=disabled"
+CFLAGS="${CFLAGS//-O2/-Os}"
+hostmakedepends="gettext-devel glib-devel perl gobject-introspection
+ pkg-config sassc gettext
+ wayland-devel wayland-protocols shaderc"
+makedepends="at-spi2-atk-devel gdk-pixbuf-devel libepoxy-devel pango-devel
+ iso-codes graphene-devel gst-plugins-bad1-devel cairo-devel
+ libxkbcommon-devel wayland-devel wayland-protocols MesaLib-devel
+ libXcursor-devel libXdamage-devel libXext-devel libXinerama-devel libXi-devel libXrandr-devel libXcomposite-devel"
+depends="gtk-update-icon-cache shared-mime-info dbus-x11"
+short_desc="GIMP ToolKit (v4) - debloated, no vulkan/broadway/cloudproviders"
+maintainer="Orphaned <orphan@voidlinux.org>"
+license="LGPL-2.1-or-later"
+homepage="https://www.gtk.org/"
+changelog="https://gitlab.gnome.org/GNOME/gtk/-/raw/gtk-4-22/NEWS"
+distfiles="${GNOME_SITE}/gtk/${version%.*}/gtk-${version}.tar.xz"
+checksum=51bd9f60c7d23a665a556c7364c21fb2e4e282566b3e7e092455e8f910330893
+make_check=no
