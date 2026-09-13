@@ -1,0 +1,30 @@
+# Template file for 'gdk-pixbuf2-mini'
+pkgname=gdk-pixbuf2-mini
+version=2.42.12
+revision=1
+build_style=meson
+configure_args="-Dpng=enabled
+ -Djpeg=enabled -Dtiff=enabled -Dgif=enabled -Dothers=enabled
+ -Dinstalled_tests=false -Dintrospection=disabled"
+CFLAGS="${CFLAGS//-O2/-Os}"
+hostmakedepends="gettext-devel glib-devel pkg-config python3-docutils"
+makedepends="libglib-devel libpng-devel tiff-devel libjpeg-turbo-devel
+ shared-mime-info"
+depends="shared-mime-info"
+short_desc="Image loading library for GTK+ (v2) - debloated, no glycin"
+maintainer="Orphaned <orphan@voidlinux.org>"
+license="LGPL-2.1-or-later"
+homepage="https://wiki.gnome.org/Projects/GdkPixbuf"
+distfiles="${GNOME_SITE}/gdk-pixbuf/${version%.*}/gdk-pixbuf-${version}.tar.xz"
+checksum=b9505b3445b9a7e48ced34760c3bcb73e966df3ac94c95a148cb669ab748e3c7
+make_check=no
+
+if [ "$CROSS_BUILD" ]; then
+	hostmakedepends+=" gdk-pixbuf-devel"
+fi
+
+pre_configure() {
+	if [ "$CROSS_BUILD" ]; then
+		touch gdk-pixbuf/loaders.cache
+	fi
+}
