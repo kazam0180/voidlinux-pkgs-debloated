@@ -4,9 +4,9 @@ version=2.59.2
 revision=1
 build_style=meson
 build_helper="rust"
-configure_args="-Dpixbuf-loader=enabled -Dgtk_doc=disabled -Dvala=disabled"
+configure_args="-Dpixbuf-loader=enabled -Dintrospection=disabled"
 CFLAGS="${CFLAGS//-O2/-Os}"
-hostmakedepends="cargo pkg-config glib-devel gdk-pixbuf-devel python3-docutils"
+hostmakedepends="cargo cargo-c pkg-config glib-devel gdk-pixbuf-devel python3-docutils"
 makedepends="cairo-devel freetype-devel gdk-pixbuf-devel libcroco-devel
  libglib-devel libxml2-devel pango-devel libdav1d-devel rust-std"
 short_desc="SVG library for GNOME - debloated, pixbuf-loader only"
