@@ -49,8 +49,9 @@ for dep in /io/srcpkgs/*/; do
     [ -d \"srcpkgs/\$depname\" ] || cp -a \"\$dep\" srcpkgs/\$depname 2>/dev/null || true
 done
 
-# Build
-./xbps-src pkg $PKG 2>&1
+# Build (use XBPS_MAKEJOBS to limit parallelism for large packages)
+XBPS_JOBS="${XBPS_MAKEJOBS:+XBPS_MAKEJOBS=$XBPS_MAKEJOBS}"
+./xbps-src pkg $PKG $XBPS_JOBS 2>&1
 
 # Copy output packages to mounted output dir
 find /tmp/void-packages/hostdir/binpkgs/ -name '*.xbps' -exec cp -v {} /output/ \; 2>/dev/null || echo 'No packages found'

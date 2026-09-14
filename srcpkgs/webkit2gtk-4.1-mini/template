@@ -1,0 +1,50 @@
+# Template file for 'webkit2gtk-4.1-mini'
+pkgname=webkit2gtk-4.1-mini
+version=2.50.4
+revision=1
+build_style=cmake
+configure_args="-DPORT=GTK
+ -DCMAKE_SKIP_RPATH=ON
+ -DENABLE_JOURNALD_LOG=OFF -DUSE_WOFF2=ON
+ -DENABLE_WAYLAND_TARGET=ON
+ -DENABLE_INTROSPECTION=OFF
+ -DENABLE_DOCUMENTATION=OFF
+ -DENABLE_MINIBROWSER=OFF
+ -DENABLE_SAMPLING_PROFILER=OFF
+ -DENABLE_BUBBLEWRAP_SANDBOX=OFF
+ -DENABLE_JIT=OFF
+ -DENABLE_WEBASSEMBLY=OFF -DENABLE_C_LOOP=ON
+ -DUSE_JPEGXL=OFF -DUSE_LIBBACKTRACE=OFF -DUSE_GTK4=OFF -DUSE_AVIF=OFF
+ -DUSE_SYSTEM_SYSPROF_CAPTURE=NO
+ -DENABLE_WEBDRIVER=OFF"
+export CFLAGS="-DNDEBUG"
+export CXXFLAGS="$CFLAGS"
+hostmakedepends="perl python3 pkg-config gperf flex ruby gettext glib-devel
+ libharfbuzz which libpsl unifdef wayland-devel libxml2-devel"
+makedepends="at-spi2-core-devel libjpeg-turbo-devel libpng-devel
+ harfbuzz-devel gst-plugins-base1-devel gst-plugins-bad1-devel sqlite-devel
+ libsoup3-devel libxslt-devel gnutls-devel icu-devel enchant2-devel
+ dbus-glib-devel libwebp-devel gtk+3-devel gtk4-devel libgudev-devel
+ libsecret-devel ruby-devel libnotify-devel hyphen-devel
+ woff2-devel freetype-devel libmanette-devel
+ flite-devel
+ libgcrypt-devel libpsl-devel
+ MesaLib-devel libxkbcommon-devel wayland-devel wayland-protocols"
+depends="gst-plugins-good1"
+short_desc="WebKit browser engine (soup3) - debloated, no JIT/gir/docs"
+maintainer="Orphaned <orphan@voidlinux.org>"
+license="LGPL-2.1-or-later, BSD-2-Clause"
+homepage="https://webkitgtk.org/"
+distfiles="https://webkitgtk.org/releases/webkitgtk-${version}.tar.xz"
+checksum=d3bfa473845acfab72635bada5e0d134fda6792c5b95c5c5cd141b46125bd8e4
+make_check=no
+
+if [ "$XBPS_WORDSIZE" = "32" ]; then
+	export LDFLAGS+=" -Wl,--no-keep-memory"
+fi
+
+post_install() {
+	vlicense Source/WebCore/LICENSE-APPLE
+	vlicense Source/WebCore/LICENSE-LGPL-2.1
+	vlicense Source/WebCore/LICENSE-LGPL-2
+}

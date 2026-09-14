@@ -1,0 +1,25 @@
+# Template file for 'glycin-mini'
+pkgname=glycin-mini
+version=0.4.2
+revision=1
+build_style=cargo
+hostmakedepends="cargo pkg-config"
+short_desc="In-process image decoder - debloated, no bwrap"
+maintainer="Orphaned <orphan@voidlinux.org>"
+license="MIT OR Apache-2.0"
+homepage="https://github.com/QaidVoid/glycin-ng"
+distfiles="https://github.com/QaidVoid/glycin-ng/archive/refs/tags/${version}.tar.gz"
+checksum=@9a7a7c51bf0d608e70427c83ea13bd7a8912dd2e5aac8ee0d40622886df4e40b
+make_check=no
+
+do_build() {
+	cargo build --release -p glycin-ng-c -p glycin-ng-libglycin-shim
+}
+
+do_install() {
+	vinstall target/release/libglycin_ng.so 644 usr/lib
+	vinstall target/release/libglycin_2.so 644 usr/lib
+	vinstall include/glycin_ng.h 644 usr/include/glycin-ng
+	vlicense LICENSE-MIT
+	vlicense LICENSE-APACHE
+}

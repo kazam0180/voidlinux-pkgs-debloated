@@ -1,0 +1,25 @@
+# Template file for 'libdecor-mini'
+pkgname=libdecor-mini
+version=0.1.1
+revision=1
+build_style=cargo
+build_helper=""
+hostmakedepends="cargo pkg-config"
+makedepends="wayland-devel"
+depends="wayland"
+short_desc="Client-side Wayland decorations - pure Rust, no GTK/D-Bus"
+maintainer="Orphaned <orphan@voidlinux.org>"
+license="MIT"
+homepage="https://github.com/QaidVoid/libdecor-rs"
+distfiles="https://github.com/QaidVoid/libdecor-rs/archive/refs/tags/${version}.tar.gz"
+checksum=@50d06f8a9ee7aec7a3b4c23b153cfca6fcb0f9652788834f34b158d879f3c5ed
+make_check=no
+
+do_build() {
+	cargo build --release -p libdecor-c
+}
+
+do_install() {
+	vinstall target/release/libdecor_0.so 644 usr/lib
+	vlicense LICENSE
+}
