@@ -1,0 +1,110 @@
+# Template file for 'llvm21-mini'
+# Stripped-down LLVM 21, mirroring Arch's llvm-mini (which ships llvm-libs only):
+#   - MinSizeRel, no assertions, no unwind tables
+#   - no docs/sphinx/tests/benchmarks/examples, no zlib/zstd/libxml2/curl/terminfo
+#   - only the X86 codegen backend is built
+#   - ships libLLVM shared libraries + llvm-config (no headers/static libs/tools)
+pkgname=llvm21-mini
+version=21.1.7
+revision=2
+build_wrksrc=llvm
+build_style=cmake
+_llvm_prefix=lib/llvm/21
+_llvm_incdir=usr/${_llvm_prefix}/include
+_llvm_libdir=usr/${_llvm_prefix}/lib
+_llvm_bindir=usr/${_llvm_prefix}/bin
+
+configure_args="
+ -DCMAKE_BUILD_TYPE=MinSizeRel
+ -DCMAKE_INSTALL_PREFIX=/usr/${_llvm_prefix}
+ -DENABLE_LINKER_BUILD_ID=YES
+ -DLLVM_ENABLE_SPHINX=OFF
+ -DLLVM_BUILD_DOCS=OFF
+ -DLLVM_INCLUDE_DOCS=OFF
+ -DLLVM_ENABLE_Z3_SOLVER=OFF
+ -DLLVM_INSTALL_UTILS=NO
+ -DLLVM_BUILD_LLVM_DYLIB=YES
+ -DLLVM_LINK_LLVM_DYLIB=YES
+ -DLLVM_ENABLE_RTTI=YES
+ -DLLVM_ENABLE_FFI=YES
+ -DLLVM_BINUTILS_INCDIR=/usr/include
+ -DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=NO
+ -DLLVM_ENABLE_ASSERTIONS=OFF
+ -DLLVM_ENABLE_UNWIND_TABLES=OFF
+ -DLLVM_ENABLE_ZLIB=OFF
+ -DLLVM_ENABLE_CURL=OFF
+ -DLLVM_ENABLE_LIBXML2=OFF
+ -DLLVM_ENABLE_TERMINFO=OFF
+ -DLLVM_ENABLE_BINDINGS=OFF
+ -DLLVM_ENABLE_OCAMLDOC=OFF
+ -DLLVM_ENABLE_ZSTD=OFF
+ -DLLVM_ENABLE_EXPENSIVE_CHECKS=OFF
+ -DLLVM_BUILD_EXAMPLES=OFF
+ -DLLVM_INCLUDE_EXAMPLES=OFF
+ -DLLVM_INCLUDE_TESTS=OFF
+ -DLLVM_INCLUDE_BENCHMARKS=OFF
+ -DLLVM_ENABLE_PEDANTIC=OFF
+ -DLLVM_ENABLE_PROJECTS=
+ -DLLVM_ENABLE_RUNTIMES="
+hostmakedepends="perl python3 pkg-config"
+makedepends="zlib-devel elfutils-devel libffi-devel libedit-devel libxml2-devel
+ binutils-devel"
+short_desc="LLVM Compiler Infrastructure - core shared library (stripped down)"
+maintainer="Orphaned <orphan@voidlinux.org>"
+license="Apache-2.0 AND NCSA AND custom:Apache-2.0-with-llvm-exception"
+homepage="https://www.llvm.org"
+distfiles="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-${version}.tar.gz"
+checksum=9ee167cdf8f6b5221d6b02dbe9a664cf8c6fee70fab071aaa4a3889c7c265258
+lib32disabled=yes
+python_version=3
+make_check=no
+nodebug=yes
+
+case "$XBPS_TARGET_MACHINE" in
+	x86_64*) _arch="X86"; _triplet="x86_64-linux-gnu"; _targets="X86";;
+	aarch64*) _arch="AArch64"; _triplet="aarch64-linux-gnu"; _targets="AArch64";;
+esac
+
+# debloat: build only the native codegen backend
+configure_args+=" -DLLVM_TARGETS_TO_BUILD=${_targets}"
+configure_args+=" -DLLVM_TARGET_ARCH=${_arch}"
+configure_args+=" -DLLVM_HOST_TRIPLE=${_triplet}"
+configure_args+=" -DLLVM_DEFAULT_TARGET_TRIPLE=${_triplet}"
+
+pre_configure() {
+	CFLAGS=${CFLAGS/ -g/ -gline-tables-only}
+	CXXFLAGS=${CXXFLAGS/ -g/ -gline-tables-only}
+}
+
+post_install() {
+	# expose libLLVM in the default linker search path, like upstream does
+	mkdir -p ${DESTDIR}/usr/lib
+	for _f in ${DESTDIR}/${_llvm_libdir}/libLLVM-*.so \
+		${DESTDIR}/${_llvm_libdir}/libLLVM.so.*; do
+		[ -e "$_f" ] || continue
+		_base=$(basename "${_f}")
+		ln -sf "llvm/21/lib/${_base}" "${DESTDIR}/usr/lib/${_base}"
+	done
+
+	# keep only llvm-config from the tools directory
+	if [ -d "${DESTDIR}/${_llvm_bindir}" ]; then
+		for _f in "${DESTDIR}/${_llvm_bindir}"/*; do
+			[ "$(basename "${_f}")" = "llvm-config" ] || rm -rf "${_f}"
+		done
+	fi
+
+	# debloat: drop headers, static libraries, cmake files, man pages and docs
+	rm -rf ${DESTDIR}/${_llvm_incdir}
+	rm -rf ${DESTDIR}/${_llvm_libdir}/cmake
+	rm -rf ${DESTDIR}/${_llvm_libdir}/libexec
+	rm -rf ${DESTDIR}/usr/${_llvm_prefix}/share
+	rm -f ${DESTDIR}/${_llvm_libdir}/*.a
+	rm -f ${DESTDIR}/${_llvm_libdir}/libLTO.so*
+	rm -f ${DESTDIR}/${_llvm_libdir}/libRemarks.so*
+	rm -f ${DESTDIR}/${_llvm_libdir}/libAggressiveInstCombine.so*
+	# unversioned development symlink, not part of the runtime package
+	rm -f ${DESTDIR}/${_llvm_libdir}/libLLVM.so
+	rm -f ${DESTDIR}/usr/lib/libLLVM.so
+	rm -rf ${DESTDIR}/usr/share/gdb
+	rm -f ${DESTDIR}/usr/lib64
+}
