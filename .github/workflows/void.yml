@@ -81,6 +81,11 @@ jobs:
 
       - name: Build ${{ matrix.pkg }}
         run: |
+          # mkdir first: tee opens its log at pipeline start, racing against
+          # build-void-ci creating dist/.
+          # pipefail: otherwise a real build failure is hidden by tee's exit 0.
+          mkdir -p dist
+          set -o pipefail
           ./bin/build-void-ci "${{ matrix.pkg }}" dist 2>&1 | tee "dist/build-${{ matrix.pkg }}.log"
 
       - name: Upload package
