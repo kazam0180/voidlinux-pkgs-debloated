@@ -1,0 +1,119 @@
+name: void build
+
+# Builds the debloated packages as Void Linux .xbps packages.
+#
+# Each job runs xbps-src inside a Void container in "ethereal" chroot mode
+# (the container root *is* the masterdir). GitHub runners give us 4 cores and
+# 16GB RAM, which is what webkit2gtk-4.1-mini needs in order not to OOM.
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Build only this template (e.g. webkit2gtk-4.1-mini). Blank = all.'
+        required: false
+        default: ''
+  schedule:
+    - cron: '17 4 * * 1'   # Mondays, off the hour to dodge the rush
+  # No `push` trigger on purpose: every template in srcpkgs is on the matrix,
+  # so each push would burn ~24 jobs (several of them multi-hour LLVM builds).
+  # Add one deliberately if you want per-commit verification.
+
+concurrency:
+  group: void-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # A workflow_dispatch input cannot edit the matrix, so resolve the package
+  # list here and fan it out to the build job.
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      json: ${{ steps.pick.outputs.json }}
+      single: ${{ steps.pick.outputs.single }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - id: pick
+        env:
+          REQUESTED: ${{ github.event.inputs.package }}
+        run: |
+          set -euo pipefail
+          if [ -n "${REQUESTED:-}" ]; then
+            echo "requested=$REQUESTED"
+            test -d "srcpkgs/$REQUESTED" || { echo "no such template: $REQUESTED" >&2; exit 1; }
+            pkgs="[\"$REQUESTED\"]"
+            echo "single=true" >> "$GITHUB_OUTPUT"
+          else
+            # Real template directories only. The ffmpeg tree keeps a dozen
+            # compatibility symlinks (libavcodec6 -> ffmpeg); find does not
+            # descend into symlinked dirs, so those are skipped and the real
+            # `ffmpeg` template is built once.
+            pkgs=$(find srcpkgs -mindepth 2 -maxdepth 2 -name template -type f \
+                   | cut -d/ -f2 | sort -u \
+                   | sed 's/.*/"&"/' | paste -sd',' - | sed 's/^/[/;s/$/]/')
+            test "$pkgs" != "[]" || { echo "no templates found" >&2; exit 1; }
+            echo "single=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "json=$pkgs" >> "$GITHUB_OUTPUT"
+          echo "will build: $pkgs"
+
+  build:
+    name: ${{ matrix.pkg }}
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        pkg: ${{ fromJSON(needs.plan.outputs.json) }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install podman
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq podman
+
+      - name: Build ${{ matrix.pkg }}
+        run: |
+          ./bin/build-void-ci "${{ matrix.pkg }}" dist 2>&1 | tee "dist/build-${{ matrix.pkg }}.log"
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.pkg }}
+          path: |
+            dist/*.xbps
+            dist/*.log
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: release
+    # Manual runs on main get a rolling "continuous" prerelease. Scheduled
+    # builds only publish artifacts, so a routine bump never touches releases.
+    if: github.event_name == 'workflow_dispatch' && github.ref_name == 'main'
+    needs: [build, plan]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*-*'
+          merge-multiple: true
+          path: dist
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Continuous build
+          tag_name: continuous
+          prerelease: true
+          make_latest: false
+          files: |
+            dist/*.xbps

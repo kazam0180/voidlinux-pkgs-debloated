@@ -1,0 +1,65 @@
+#!/bin/sh
+# Build a debloated package as a Void Linux .xbps using xbps-src.
+#
+# Runs xbps-src inside a Void container in "ethereal" chroot mode, where the
+# container root filesystem *is* the masterdir. Kept as a script (rather than
+# inline YAML) so it is versioned and can be reproduced by hand.
+#
+# Usage: build-void-ci <template-name> [output-dir]
+#
+#   template-name   directory under srcpkgs/, e.g. gtk4-mini
+#   output-dir      where to drop the resulting .xbps (default: ./dist)
+set -eu
+
+PKG="${1:?usage: build-void-ci <template-name> [output-dir]}"
+OUT_DIR="${2:-./dist}"
+
+REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+IMAGE="${VOID_IMAGE:-ghcr.io/void-linux/void-glibc-full:20260901r1}"
+NAME="void-ci-$PKG"
+
+[ -d "$REPO_DIR/srcpkgs/$PKG" ] || {
+	echo "no such template: srcpkgs/$PKG" >&2
+	exit 1
+}
+mkdir -p "$OUT_DIR"
+OUT_DIR="$(cd "$OUT_DIR" && pwd)"
+
+echo "==> building $PKG with $IMAGE"
+
+podman rm -f "$NAME" >/dev/null 2>&1 || true
+
+# --privileged: xbps-src needs to set up the chroot (mounts, pivot_root).
+podman run --rm --privileged --name "$NAME" \
+	-v "$REPO_DIR":/io:Z \
+	-v "$OUT_DIR":/output:Z \
+	-e "PKG=$PKG" \
+	"$IMAGE" \
+	/bin/sh -euxc '
+		xbps-install -Syu >/dev/null 2>&1
+		xbps-install -y bash git make gcc nasm perl pkg-config python3 \
+			xz tar patch file wget cmake ninja unzip bsdtar >/dev/null 2>&1 || true
+
+		cd /tmp
+		git clone --depth 1 https://github.com/void-linux/void-packages.git
+		cd void-packages
+
+		# ethereal chroot: the container root is the masterdir
+		ln -s / masterdir
+		xbps-uhelper arch > masterdir/.xbps_chroot_init
+		echo XBPS_CHROOT_CMD=ethereal > etc/conf
+		echo XBPS_ALLOW_CHROOT_BREAKOUT=yes >> etc/conf
+
+		rm -rf "srcpkgs/$PKG"
+		cp -a "/io/srcpkgs/$PKG" "srcpkgs/$PKG"
+
+		./xbps-src pkg "$PKG"
+
+		find /tmp/void-packages/hostdir/binpkgs/ -name "*.xbps" \
+			-exec cp -v {} /output/ \;
+	'
+
+podman rm -f "$NAME" >/dev/null 2>&1 || true
+
+echo "==> result:"
+ls -la "$OUT_DIR/$PKG"*.xbps
