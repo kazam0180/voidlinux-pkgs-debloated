@@ -1,7 +1,8 @@
 # Template file for 'libdecor-mini'
+# Client-side Wayland decorations, pure Rust (libdecor-rs), C ABI only.
 pkgname=libdecor-mini
 version=0.1.1
-revision=1
+revision=3
 build_style=cargo
 build_helper=""
 hostmakedepends="cargo pkg-config"
@@ -15,11 +16,28 @@ distfiles="https://github.com/QaidVoid/libdecor-rs/archive/refs/tags/${version}.
 checksum=@50d06f8a9ee7aec7a3b4c23b153cfca6fcb0f9652788834f34b158d879f3c5ed
 make_check=no
 
+post_extract() {
+	# rustc already emits an anonymous version script of its own for every
+	# cdylib crate, to control which symbols leave the library. c-api/build.rs
+	# passes a *second* -Wl,--version-script, and BFD ld refuses the pair:
+	#
+	#   ld: error: anonymous version tag cannot be combined with other
+	#           version tags
+	#
+	# Dropping ours is safe: every public entry point is
+	# #[unsafe(no_mangle)] pub extern "C", which rustc's own script already
+	# exports while keeping everything else local -- the same effect the
+	# checked-in libdecor.ld was trying to achieve.
+	vsed -i '/rustc-cdylib-link-arg=-Wl,--version-script/d' \
+		${wrksrc}/c-api/build.rs
+}
+
 do_build() {
 	cargo build --release -p libdecor-c
 }
 
 do_install() {
 	vinstall target/release/libdecor_0.so 644 usr/lib
-	vlicense LICENSE
+	# Upstream ships no top-level LICENSE file (only assets/LICENSE.Cantarell.txt),
+	# so there is nothing to vlicense; the SPDX id above comes from Cargo.toml.
 }

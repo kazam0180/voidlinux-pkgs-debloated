@@ -1,7 +1,8 @@
 # Template file for 'glycin-mini'
+# In-process image decoder (glycin-ng), C ABI only, no bwrap sandbox.
 pkgname=glycin-mini
 version=0.4.2
-revision=1
+revision=3
 build_style=cargo
 hostmakedepends="cargo pkg-config"
 short_desc="In-process image decoder - debloated, no bwrap"
@@ -12,8 +13,30 @@ distfiles="https://github.com/QaidVoid/glycin-ng/archive/refs/tags/${version}.ta
 checksum=@9a7a7c51bf0d608e70427c83ea13bd7a8912dd2e5aac8ee0d40622886df4e40b
 make_check=no
 
+post_extract() {
+	# rustc already emits an anonymous version script of its own for every
+	# cdylib crate, to control which symbols leave the library. c-api/build.rs
+	# passes a *second* -Wl,--version-script, and BFD ld refuses the pair:
+	#
+	#   ld: error: anonymous version tag cannot be combined with other
+	#           version tags
+	#
+	# Dropping ours is safe: every public entry point is
+	# #[unsafe(no_mangle)] pub extern "C", which rustc's own script already
+	# exports while keeping everything else local -- the same effect the
+	# checked-in glycin_ng.ld was trying to achieve.
+	vsed -i '/rustc-cdylib-link-arg=-Wl,--version-script/d' \
+		${wrksrc}/c-api/build.rs
+}
+
 do_build() {
-	cargo build --release -p glycin-ng-c -p glycin-ng-libglycin-shim
+	# The shim links against libglycin_ng.so, so that has to exist before it
+	# is built -- cargo would otherwise run both crates in parallel and fail
+	# with "cannot find -lglycin_ng". build.rs exposes GLYCIN_NG_LIB_DIR for
+	# exactly this two-phase distro flow, so build and stage the C ABI first.
+	cargo build --release -p glycin-ng-c
+	install -Dm755 target/release/libglycin_ng.so /usr/lib/libglycin_ng.so
+	GLYCIN_NG_LIB_DIR=/usr/lib cargo build --release -p glycin-ng-libglycin-shim
 }
 
 do_install() {
