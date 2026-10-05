@@ -22,7 +22,7 @@ podman run --rm \
     sh -c "
 set -ex
 xbps-install -Syu >/dev/null 2>&1
-xbps-install -y bash git make gcc nasm perl pkg-config python3 xz tar patch file wget >/dev/null 2>&1
+xbps-install -y bash git make gcc nasm perl pkg-config python3 xz tar patch file wget cmake ninja unzip bsdtar >/dev/null 2>&1
 
 cd /tmp
 git clone --depth 1 https://github.com/void-linux/void-packages.git

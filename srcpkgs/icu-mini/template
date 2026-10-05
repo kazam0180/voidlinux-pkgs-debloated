@@ -1,0 +1,85 @@
+# Template file for 'icu-mini'
+# International Components for Unicode with a filtered data build.
+#
+# Ports Arch's icu-mini.sh:
+#   - pulls in the standalone icu4c-<ver>-data.zip so the locale/collation/
+#     transliteration data does not have to be pulled out of the source tree
+#   - applies files/filter.json, which keeps only en_US/en_GB locales, a small
+#     set of collation languages, drops brkitr/conversion data and most
+#     transliteration rules
+#   - -Os, and no `make check` (the test suite needs the full data set)
+#
+# Monolithic runtime package: shared libraries + filtered icudt data only.
+pkgname=icu-mini
+version=78.3
+revision=1
+build_wrksrc=icu/source
+build_style=gnu-configure
+configure_args="--with-data-packaging=archive --enable-static"
+hostmakedepends="pkg-config"
+short_desc="International Components for Unicode - filtered data build"
+maintainer="Orphaned <orphan@voidlinux.org>"
+license="ICU"
+homepage="https://home.unicode.org/"
+distfiles="https://github.com/unicode-org/icu/releases/download/release-${version}/icu4c-${version}-sources.tgz
+ https://github.com/unicode-org/icu/releases/download/release-${version}/icu4c-${version}-data.zip"
+checksum="3a2e7a47604ba702f345878308e6fefeca612ee895cf4a5f222e7955fabfe0c0
+ 9d8b3899096aeb83e4e21ef8a40fec9e03b28db18c48452efac882ce25a91e27"
+make_check=no
+nodebug=yes
+lib32disabled=yes
+
+_icu_dat="icudt${version%%.*}"
+
+CFLAGS="-fPIC -Os -D_LARGE_FILE_SOURCE=1 -D_FILE_OFFSET_BITS=64"
+CXXFLAGS="-fPIC -Os -D_LARGE_FILE_SOURCE=1 -D_FILE_OFFSET_BITS=64"
+
+# Both distfiles are unpacked into the same directory, so the work dir is
+# icu/source and the data tree lands next to it as ./data.
+post_extract() {
+	if [ -d ${wrksrc}/data ]; then
+		rm -rf ${wrksrc}/icu/source/data
+		mv ${wrksrc}/data ${wrksrc}/icu/source/data
+	fi
+}
+
+pre_configure() {
+	# tell ICU's data build to strip everything we do not need
+	export ICU_DATA_FILTER_FILE="${FILESDIR}/filter.json"
+	if [ -f "$ICU_DATA_FILTER_FILE" ]; then
+		msg_normal "$pkgver: using ICU data filter $ICU_DATA_FILTER_FILE\n"
+	else
+		msg_error "$pkgver: ICU data filter not found at $ICU_DATA_FILTER_FILE\n"
+	fi
+
+	# makefile dependency bug: this directory needs to be created manually
+	mkdir -p ${wrksrc}/icu/source/data/out/tmp
+}
+
+post_install() {
+	vlicense ${wrksrc}/icu/LICENSE
+
+	# runtime-only package: drop headers, static libs and build-time tooling
+	rm -f ${DESTDIR}/usr/lib/*.a
+	rm -f ${DESTDIR}/usr/lib/*.so
+	rm -rf ${DESTDIR}/usr/include
+	rm -rf ${DESTDIR}/usr/lib/pkgconfig
+	rm -rf ${DESTDIR}/usr/share/icu/${version%rc*}/config
+	for _f in ${DESTDIR}/usr/share/icu/${version%rc*}/*install*; do
+		rm -f "${_f}"
+	done
+
+	# data-generation helpers are only needed while building the .dat
+	for _tool in escapesrc genbrk gencfu gencmn gencnval genccode gendict \
+		genrb gennorm2 gensprep icuexportdata icupkg makeconv pkgdata; do
+		rm -f ${DESTDIR}/usr/bin/${_tool}
+	done
+	# pkgdata.inc/Makefile.inc only serve pkgdata
+	rm -f ${DESTDIR}/usr/lib/icu/pkgdata.inc
+	rm -f ${DESTDIR}/usr/lib/icu/Makefile.inc
+	rm -rf ${DESTDIR}/usr/lib/icu/${version%rc*}
+
+	rm -f ${DESTDIR}/usr/bin/icu-config
+	rm -rf ${DESTDIR}/usr/share/man
+	rm -rf ${DESTDIR}/usr/share/doc
+}
