@@ -126,21 +126,26 @@ uses a persistent container plus `XBPS_KEEP_BUILD_DIR=yes`, so a packaging-only
 failure reuses compiled objects instead of forcing a full recompile — worth it
 for LLVM, which takes hours.
 
-To use the packages, add the `continuous` release as a repository. The release
-ships an `x86_64-repodata` index alongside the `.xbps` files, which xbps
-requires before it will install from a directory or a URL:
+## Installing
+
+The `continuous` release ships the `.xbps` files plus an `x86_64-repodata`
+index, so the usual Void recipe works — with one caveat below.
+
+**Currently you must install from a local directory.** The packages are not
+signed, and `xbps-install` refuses to fetch an unsigned package from a *remote*
+repository (`signature-by` has nothing to verify against). Signing the release
+is not set up yet.
 
 ```sh
-sudo xbps-install -R https://github.com/kazam0180/voidlinux-pkgs-debloated/releases/download/continuous
-sudo xbps-install -y mesa-mini
-```
+# 1. fetch the release assets you want (or clone and use dist/)
+gh release download continuous --repo kazam0180/voidlinux-pkgs-debloated \
+    --pattern '*.xbps' --dir void-debloated
+cd void-debloated
 
-Building that index locally works too, if you have a directory of `.xbps`
-files:
+# 2. build the repository index from the packages
+xbps-rindex -a *.xbps
 
-```sh
-cd /path/to/packages
-xbps-rindex -a *.xbps          # writes x86_64-repodata
+# 3. install
 sudo xbps-install -R "$PWD" -y mesa-mini
 ```
 
