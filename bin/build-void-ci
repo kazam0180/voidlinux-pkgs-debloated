@@ -53,6 +53,21 @@ podman run --rm --privileged --name "$NAME" \
 		rm -rf "srcpkgs/$PKG"
 		cp -a "/io/srcpkgs/$PKG" "srcpkgs/$PKG"
 
+		# Overlay every template in the repo, not just the one being built.
+		# The ffmpeg tree relies on this: the repo carries compat symlinks
+		# (ffmpeg6-devel -> ffmpeg, libavcodec6 -> ffmpeg, ...) that must
+		# win over upstream. Our template declares conflicts=ffmpeg6 and
+		# replaces=ffmpeg6>=0, so upstream ffmpeg6-devel (sourcepkg=ffmpeg6)
+		# resolves to our ffmpeg package, whose builddir is named after
+		# "ffmpeg" -- without the overlay the subpackage build does
+		#   cd /builddir/ffmpeg6-6.1.6
+		# and dies with "cannot access wrksrc directory".
+		for entry in /io/srcpkgs/*; do
+		    name=$(basename "$entry")
+		    rm -rf "srcpkgs/$name"
+		    cp -a "$entry" "srcpkgs/$name"
+		done
+
 		./xbps-src pkg "$PKG"
 
 		find /tmp/void-packages/hostdir/binpkgs/ -name "*.xbps" \

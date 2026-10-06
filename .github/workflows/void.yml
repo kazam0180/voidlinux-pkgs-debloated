@@ -19,7 +19,10 @@ on:
   # Add one deliberately if you want per-commit verification.
 
 concurrency:
-  group: void-${{ github.ref }}
+  # Include the requested package so that building one package does not
+  # cancel a full-matrix run (and vice versa); identical requests still
+  # collapse, which is what cancel-in-progress is for.
+  group: void-${{ github.ref }}-${{ github.event.inputs.package || 'all' }}
   cancel-in-progress: true
 
 jobs:
