@@ -120,6 +120,15 @@ jobs:
           pattern: '*'
           merge-multiple: true
           path: dist
+      - name: Generate repository index
+        # A release of bare .xbps files is NOT a Void repository: xbps refuses
+        # to install from a directory or URL that has no <arch>-repodata.
+        # xbps-rindex builds one from the packages in the same directory.
+        run: |
+          podman run --rm -v "$PWD/dist:/repo:Z" \
+            ghcr.io/void-linux/void-glibc-full:20260901r1 \
+            sh -c 'cd /repo && xbps-rindex -a *.xbps && ls -la x86_64-repodata'
+
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
@@ -129,3 +138,4 @@ jobs:
           make_latest: false
           files: |
             dist/*.xbps
+            dist/x86_64-repodata
