@@ -113,7 +113,11 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: '*-*'
+          # '*', not '*-*': our artifact names are bare package names, and
+          # several of them contain no hyphen at all (ffmpeg, mesa-mini is
+          # fine, but "ffmpeg" would never match). upload-artifact also
+          # strips the dist/ prefix, so everything lands flat in path.
+          pattern: '*'
           merge-multiple: true
           path: dist
       - name: Release
